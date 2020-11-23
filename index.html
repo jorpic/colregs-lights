@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <style>
+    svg {
+      background-color: black;
+    }
+  </style>
+
+  <body>
+      <svg
+        xmlns="http://www.w3.org/2000/svg" version="1.1"
+        viewBox="-20 -20 40 40"
+        width="500" height="500"
+      >
+        <g id="topView"></g>
+      </svg>
+  </body>
+  <script>
+      const lights = {
+        back: {
+          color: "lightyellow",
+          range: {from: 122.5, to: -122.5}
+        },
+        left: {
+          color: "red",
+          range: {from: 0, to: 122.5}
+        },
+        right: {
+          color: "green",
+          range: {from: -122.5, to: 0}
+        }
+      };
+
+      const ships = {
+        small: {
+          back:  {x: 0, y:  0, z: 5},
+          left:  {x: 6, y:  2, z: 5},
+          right: {x: 6, y: -2, z: 5},
+        }
+      };
+
+      const topView = document.getElementById("topView");
+
+      function mkLight(l, x, y) {
+        const e = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle");
+        e.setAttribute("cx", x);
+        e.setAttribute("cy", y);
+        e.setAttribute("r", 1);
+        e.setAttribute("fill", l.color);
+        return e;
+      }
+
+      function mkShip(s) {
+        const e = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "g");
+        Object.entries(s).forEach(([lightName, pos]) =>
+          e.appendChild(mkLight(lights[lightName], pos.x, pos.y))
+        );
+        return e;
+      }
+      topView.appendChild(mkShip(ships.small));
+  </script>
+</html>
