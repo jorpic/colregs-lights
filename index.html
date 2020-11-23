@@ -37,9 +37,13 @@
 
       const ships = {
         small: {
-          back:  {x: 0, y:  0, z: 5},
-          left:  {x: 6, y:  2, z: 5},
-          right: {x: 6, y: -2, z: 5},
+          width: 6,
+          length: 16,
+          lights: {
+            back:  {x: 0, y:  0, z: 5},
+            left:  {x: 6, y:  2, z: 5},
+            right: {x: 6, y: -2, z: 5},
+          }
         }
       };
 
@@ -67,9 +71,19 @@
 
       function mkShip(s) {
         const e = mkSvg("g", {});
-        forEachKey(s, (lightName, pos) =>
-          e.appendChild(mkLight(lights[lightName], pos.x, pos.y))
+        forEachKey(s.lights, (name, pos) =>
+          e.appendChild(mkLight(lights[name], pos.x, pos.y))
         );
+        e.appendChild(mkSvg("line", {
+          stroke: "white",
+          "stroke-width": 0.1,
+          x1: 0, x2: s.length, y1: 0, y2: 0
+        }));
+        e.appendChild(mkSvg("line", {
+          stroke: "white",
+          "stroke-width": 0.1,
+          x1: 0, x2: 0, y1: -s.width/2, y2: s.width/2
+        }));
         return e;
       }
       topView.appendChild(mkShip(ships.small));
