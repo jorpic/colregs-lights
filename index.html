@@ -45,22 +45,29 @@
 
       const topView = document.getElementById("topView");
 
-      function mkLight(l, x, y) {
+      function forEachKey(obj, fn) {
+        Object.entries(obj).forEach(([k, v]) => fn(k, v))
+      }
+
+      function mkSvg(name, attrs) {
         const e = document.createElementNS(
           "http://www.w3.org/2000/svg",
-          "circle");
-        e.setAttribute("cx", x);
-        e.setAttribute("cy", y);
-        e.setAttribute("r", 1);
-        e.setAttribute("fill", l.color);
+          name);
+        forEachKey(attrs, (k,v) => e.setAttribute(k, v));
         return e;
       }
 
+      function mkLight(l, cx, cy) {
+        return mkSvg("circle", {
+          cx, cy,
+          r: 1,
+          fill: l.color
+        })
+      }
+
       function mkShip(s) {
-        const e = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "g");
-        Object.entries(s).forEach(([lightName, pos]) =>
+        const e = mkSvg("g", {});
+        forEachKey(s, (lightName, pos) =>
           e.appendChild(mkLight(lights[lightName], pos.x, pos.y))
         );
         return e;
