@@ -13,6 +13,13 @@
   <body>
       <svg
         xmlns="http://www.w3.org/2000/svg" version="1.1"
+        viewBox="-20 -20 40 20"
+        width="500" height="500"
+      >
+        <g id="sideView"></g>
+      </svg>
+      <svg
+        xmlns="http://www.w3.org/2000/svg" version="1.1"
         viewBox="-20 -20 40 40"
         width="500" height="500"
       >
@@ -21,6 +28,10 @@
   </body>
   <script>
       const lights = {
+        top: {
+          color: "white",
+          range: {from: -122.5, to: 122.5}
+        },
         back: {
           color: "lightyellow",
           range: {from: 122.5, to: -122.5}
@@ -40,7 +51,8 @@
           width: 6,
           length: 16,
           lights: {
-            back:  {x: 0, y:  0, z: 5},
+            top:   {x: 8, y:  0, z: 15},
+            back:  {x: 0.1, y:  0, z: 5},
             left:  {x: 6, y:  2, z: 5},
             right: {x: 6, y: -2, z: 5},
           }
@@ -48,6 +60,7 @@
       };
 
       const topView = document.getElementById("topView");
+      const sideView = document.getElementById("sideView");
 
       function forEachKey(obj, fn) {
         Object.entries(obj).forEach(([k, v]) => fn(k, v))
@@ -61,15 +74,16 @@
         return e;
       }
 
-      function mkLight(l, cx, cy) {
+      function mkLight(l, x, y) {
         return mkSvg("circle", {
-          cx, cy,
+          cx: x,
+          cy: -y,
           r: 1,
           fill: l.color
         })
       }
 
-      function mkShip(s) {
+      function mkShipTop(s) {
         const e = mkSvg("g", {});
         forEachKey(s.lights, (name, pos) =>
           e.appendChild(mkLight(lights[name], pos.x, pos.y))
@@ -87,14 +101,30 @@
         return e;
       }
 
-      topView.appendChild(mkShip(ships.small));
+      topView.appendChild(mkShipTop(ships.small));
 
+      let shipDirection = 1;
 
-      let shipDirection = 0;
+      function mkShipSide(s) {
+        const e = mkSvg("g", {});
+        forEachKey(s.lights, (name, pos) => {
+          const alpha = Math.PI*shipDirection/180;
+          const beta = alpha - Math.atan(-pos.y / pos.x);
+          const x = Math.cos(beta) * Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+          e.appendChild(mkLight(lights[name], x, pos.z));
+        });
+        return e;
+      }
+
+      sideView.appendChild(mkShipSide(ships.small));
+
       function rotateShip() {
         topView.setAttribute("transform", `rotate(${shipDirection})`);
+        sideView.innerHTML = "";
+        sideView.appendChild(mkShipSide(ships.small));
         window.requestAnimationFrame(rotateShip);
       }
+
       window.requestAnimationFrame(rotateShip);
 
       function changeDirection(delta) {
