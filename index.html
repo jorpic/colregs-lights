@@ -74,10 +74,9 @@
         return e;
       }
 
-      function mkLight(l, x, y) {
+      function mkLight(l, cx, cy) {
         return mkSvg("circle", {
-          cx: x,
-          cy: -y,
+          cx, cy,
           r: 1,
           fill: l.color
         })
@@ -103,15 +102,19 @@
 
       topView.appendChild(mkShipTop(ships.small));
 
-      let shipDirection = 1;
+      let shipDirection = 0;
 
       function mkShipSide(s) {
         const e = mkSvg("g", {});
         forEachKey(s.lights, (name, pos) => {
+          const l = lights[name];
           const alpha = Math.PI*shipDirection/180;
           const beta = alpha - Math.atan(-pos.y / pos.x);
-          const x = Math.cos(beta) * Math.sqrt(pos.x * pos.x + pos.y * pos.y);
-          e.appendChild(mkLight(lights[name], x, pos.z));
+          const gamma = (90 - beta/Math.PI*180) % 360;
+          if (l.range.from <= gamma && gamma <= l.range.to) {
+            const x = Math.cos(beta) * Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+            e.appendChild(mkLight(l, x, -pos.z));
+          }
         });
         return e;
       }
