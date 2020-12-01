@@ -25,7 +25,8 @@
       ></svg>
   </body>
   <script>
-      const deg2rad = x => x/180*Math.PI;
+      const rad = x => x/180*Math.PI;
+      const deg = x => x*180/Math.PI;
       const forEachKey = (obj, fn) =>
         Object.entries(obj).forEach(([k, v]) => fn(k, v));
 
@@ -62,6 +63,24 @@
           ...props
         });
 
+      const Sector = props => new View(
+        "path",
+        _ => {
+          const {fill, cr, x, y, from, to} = props;
+          const cx1 = Math.cos(to) * cr + x;
+          const cy1 = -Math.sin(to) * cr + y;
+          const cx2 = Math.cos(from) * cr + x;
+          const cy2 = -Math.sin(from) * cr + y;
+          const large = to - from > Math.PI ? 1 : 0;
+          return {
+            fill,
+            d: [`M${x} ${y}`,
+                `L${cx1} ${cy1}`,
+                `A${cr} ${cr} 0 ${large} 1 ${cx2} ${cy2}`,
+                "Z"
+              ].join(" ")
+          };
+        })
 
       class Light {
         constructor(pos, props) {
@@ -74,16 +93,24 @@
         static right = pos => new Light(pos, {color: "green",  from: -122.5, to: 0})
 
         topView = _ =>
-          new View("circle", {cx: this.x, cy: this.y, r: 1, fill: this.color})
+          Sector({
+            x: this.x,
+            y: this.y,
+            from: rad(this.from),
+            to: rad(this.to),
+            cr: 1.2,
+            fill: this.color
+          })
 
         sideView = props =>
           new View("circle", _ => {
             const {isVisible, x, z} = props();
+            // isVisible = fn(direction, this.from, this.to)
             return {
               cx: x, cy: -z, r: 1,
               fill: this.color,
               "fill-opacity": isVisible ? 1 : 0
-            }
+            };
           })
       }
 
@@ -105,10 +132,10 @@
           this.sideView =
             new View("g", {})
               .add(this.lights.map(l => l.sideView( _ => {
-                const alpha = deg2rad(this.direction);
+                const alpha = rad(this.direction);
                 let beta = alpha - Math.atan(-l.y / l.x);
                 Number.isNaN(beta) && (beta = -Math.PI);
-                const gamma = (beta/Math.PI*180) % 360;
+                const gamma = deg(beta) % 360;
 
                 const x = -Math.sin(beta) * Math.sqrt(l.x * l.x + l.y * l.y);
                 Number.isNaN(x) && console.log({alpha, beta, gamma, l})
@@ -128,8 +155,8 @@
       const ship = new Ship(6, 16, [
         Light.top(  {x: 8, y:  0, z: 15}),
         Light.back( {x: 0, y:  0, z: 5}),
-        Light.left( {x: 6, y:  2, z: 5}),
-        Light.right({x: 6, y: -2, z: 5}),
+        Light.left( {x: 6, y: -2, z: 5}),
+        Light.right({x: 6, y:  2, z: 5}),
       ]);
 
       document.getElementById("topView").appendChild(ship.topView.elem);
