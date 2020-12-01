@@ -12,138 +12,157 @@
 
   <body>
       <svg
+        id="sideView"
         xmlns="http://www.w3.org/2000/svg" version="1.1"
         viewBox="-20 -20 40 20"
         width="500" height="500"
-      >
-        <g id="sideView"></g>
-      </svg>
+      ></svg>
       <svg
+        id="topView"
         xmlns="http://www.w3.org/2000/svg" version="1.1"
         viewBox="-20 -20 40 40"
         width="500" height="500"
-      >
-        <g id="topView"></g>
-      </svg>
+      ></svg>
   </body>
   <script>
-      const lights = {
-        top: {
-          color: "white",
-          range: {from: -122.5, to: 122.5}
-        },
-        back: {
-          color: "lightyellow",
-          range: {from: 122.5, to: -122.5}
-        },
-        left: {
-          color: "red",
-          range: {from: 0, to: 122.5}
-        },
-        right: {
-          color: "green",
-          range: {from: -122.5, to: 0}
+      const deg2rad = x => x/180*Math.PI;
+      const forEachKey = (obj, fn) =>
+        Object.entries(obj).forEach(([k, v]) => fn(k, v));
+
+      class View {
+        constructor(name, props) {
+          this.children = [];
+          this.props = props;
+          this.elem = document.createElementNS("http://www.w3.org/2000/svg", name);
+          this.update();
         }
-      };
 
-      const ships = {
-        small: {
-          width: 6,
-          length: 16,
-          lights: {
-            top:   {x: 8, y:  0, z: 15},
-            back:  {x: 0.1, y:  0, z: 5},
-            left:  {x: 6, y:  2, z: 5},
-            right: {x: 6, y: -2, z: 5},
-          }
+        add(children) {
+          children.forEach(c => {
+            this.elem.appendChild(c.elem);
+            this.children.push(c);
+          });
+          return this;
         }
-      };
 
-      const topView = document.getElementById("topView");
-      const sideView = document.getElementById("sideView");
-
-      function forEachKey(obj, fn) {
-        Object.entries(obj).forEach(([k, v]) => fn(k, v))
+        update() {
+          const props = typeof this.props === "function"
+            ? this.props()
+            : this.props;
+          forEachKey(props, (k,v) => this.elem.setAttribute(k, v));
+          this.children.forEach(c => c.update());
+        }
       }
 
-      function mkSvg(name, attrs) {
-        const e = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          name);
-        forEachKey(attrs, (k,v) => e.setAttribute(k, v));
-        return e;
-      }
 
-      function mkLight(l, cx, cy) {
-        return mkSvg("circle", {
-          cx, cy,
-          r: 1,
-          fill: l.color
-        })
-      }
-
-      function mkShipTop(s) {
-        const e = mkSvg("g", {});
-        forEachKey(s.lights, (name, pos) =>
-          e.appendChild(mkLight(lights[name], pos.x, pos.y))
-        );
-        e.appendChild(mkSvg("line", {
-          stroke: "white",
-          "stroke-width": 0.1,
-          x1: 0, x2: s.length, y1: 0, y2: 0
-        }));
-        e.appendChild(mkSvg("line", {
-          stroke: "white",
-          "stroke-width": 0.1,
-          x1: 0, x2: 0, y1: -s.width/2, y2: s.width/2
-        }));
-        return e;
-      }
-
-      topView.appendChild(mkShipTop(ships.small));
-
-      let shipDirection = 0;
-
-      function mkShipSide(s) {
-        const e = mkSvg("g", {});
-        forEachKey(s.lights, (name, pos) => {
-          const l = lights[name];
-          const alpha = Math.PI*shipDirection/180;
-          const beta = alpha - Math.atan(-pos.y / pos.x);
-          const gamma = (90 - beta/Math.PI*180) % 360;
-          if (l.range.from <= gamma && gamma <= l.range.to) {
-            const x = Math.cos(beta) * Math.sqrt(pos.x * pos.x + pos.y * pos.y);
-            e.appendChild(mkLight(l, x, -pos.z));
-          }
+      const Line = props => new View(
+        "line",
+        { stroke: "white", "stroke-width": 0.1,
+          x1: 0, x2: 0, y1: 0, y2: 0,
+          ...props
         });
-        return e;
+
+
+      class Light {
+        constructor(pos, props) {
+          Object.assign(this, {...pos, ...props});
+        }
+
+        static top   = pos => new Light(pos, {color: "white",  from: -122.5, to: 122.5})
+        static back  = pos => new Light(pos, {color: "yellow", from: 122.5,  to: -122.5})
+        static left  = pos => new Light(pos, {color: "red",    from: 0,      to: 122.5})
+        static right = pos => new Light(pos, {color: "green",  from: -122.5, to: 0})
+
+        topView = _ =>
+          new View("circle", {cx: this.x, cy: this.y, r: 1, fill: this.color})
+
+        sideView = props =>
+          new View("circle", _ => {
+            const {isVisible, x, z} = props();
+            return {
+              cx: x, cy: -z, r: 1,
+              fill: this.color,
+              "fill-opacity": isVisible ? 1 : 0
+            }
+          })
       }
 
-      sideView.appendChild(mkShipSide(ships.small));
 
-      function rotateShip() {
-        topView.setAttribute("transform", `rotate(${shipDirection})`);
-        sideView.innerHTML = "";
-        sideView.appendChild(mkShipSide(ships.small));
-        window.requestAnimationFrame(rotateShip);
+      class Ship {
+        direction = 0;
+
+        constructor(width, length, lights) {
+          Object.assign(this, {width, length, lights});
+
+          this.topView =
+            new View("g", _ => ({transform: `rotate(${this.direction})`}))
+              .add([
+                Line({x2: this.length}),
+                Line({y1: -this.width/2, y2: this.width/2}),
+                ...this.lights.map(l => l.topView())
+              ]);
+
+          this.sideView =
+            new View("g", {})
+              .add(this.lights.map(l => l.sideView( _ => {
+                const alpha = deg2rad(this.direction);
+                let beta = alpha - Math.atan(-l.y / l.x);
+                Number.isNaN(beta) && (beta = -Math.PI);
+                const gamma = (beta/Math.PI*180) % 360;
+
+                const x = -Math.sin(beta) * Math.sqrt(l.x * l.x + l.y * l.y);
+                Number.isNaN(x) && console.log({alpha, beta, gamma, l})
+                return {
+                  isVisible: true, x, z: l.z
+                };
+              })));
+        }
+
+        rotate(delta) {
+          this.direction = (this.direction + delta) % 360;
+          this.topView.update();
+          this.sideView.update();
+        }
       }
 
-      window.requestAnimationFrame(rotateShip);
+      const ship = new Ship(6, 16, [
+        Light.top(  {x: 8, y:  0, z: 15}),
+        Light.back( {x: 0, y:  0, z: 5}),
+        Light.left( {x: 6, y:  2, z: 5}),
+        Light.right({x: 6, y: -2, z: 5}),
+      ]);
 
-      function changeDirection(delta) {
-        shipDirection = (shipDirection + delta/2) % 360;
-      }
+      document.getElementById("topView").appendChild(ship.topView.elem);
+      document.getElementById("sideView").appendChild(ship.sideView.elem);
 
-      document.addEventListener("mousemove",
-        e => e.buttons && changeDirection(e.movementX)
-      );
+
+      let angleDelta = 0;
+
+      function update(force) {
+        if(force === true || Math.abs(angleDelta) > 1) {
+          ship.rotate(angleDelta);
+          angleDelta = 0;
+        }
+        requestAnimationFrame(update);
+      };
+      update(true);
+
+      document.addEventListener("mousemove", e => {
+        if(e.buttons) {
+          e.preventDefault();
+          angleDelta += e.movementX/2;
+        }
+      });
 
       let prevTouch = null;
+      document.addEventListener("touchend", _ => { prevTouch = null; });
       document.addEventListener("touchmove",
         e => {
           e.preventDefault();
           const newTouch = e.touches[0].clientX;
-          prevTouch && changeDirection(prevTouch - newTouch);
+          if(prevTouch) {
+            angleDelta += (prevTouch - newTouch)/2;
+          }
           prevTouch = newTouch;
         },
         {passive: false}
