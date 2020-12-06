@@ -7,7 +7,7 @@
   <style>
     svg {
       background-color: black;
-      height: 45vh;
+      height: 48vh;
       display: block;
       margin: 1vh auto;
     }
@@ -107,8 +107,14 @@
 
         sideView = props =>
           new View("circle", _ => {
-            const {isVisible, x, z} = props();
-            // isVisible = fn(direction, this.from, this.to)
+            const {shipDirection, x, z} = props();
+            const isVisible = this.from > this.to
+              ? (this.from <= shipDirection && shipDirection <= this.from - this.to)
+                || (-this.from >= shipDirection && shipDirection >= -this.from + this.to)
+              : (this.from <= shipDirection && shipDirection <= this.to)
+                || (this.from <= 360 - shipDirection && 360 + shipDirection <= this.to)
+            ;
+            console.log(this.color, shipDirection);
             return {
               cx: x, cy: -z, r: 1,
               fill: this.color,
@@ -143,7 +149,8 @@
                 const x = -Math.sin(beta) * Math.sqrt(l.x * l.x + l.y * l.y);
                 Number.isNaN(x) && console.log({alpha, beta, gamma, l})
                 return {
-                  isVisible: true, x, z: l.z
+                  shipDirection: this.direction,
+                  x, z: l.z
                 };
               })));
         }
